@@ -3,8 +3,8 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT_DIR / "data"
-TRAIN_PATH = DATA_DIR / "train.csv"
-TEST_PATH = DATA_DIR / "test.csv"
+DATA_PATH = DATA_DIR / "data.csv"
+TRAIN_PATH = DATA_PATH
 
 ARTIFACT_DIR = ROOT_DIR / "artifacts"
 MODEL_PATH = ARTIFACT_DIR / "house_price_model.joblib"

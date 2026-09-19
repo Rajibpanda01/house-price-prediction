@@ -3,14 +3,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.config import ID_COLUMN, TARGET, TEST_PATH, TRAIN_PATH
+from src.config import ID_COLUMN, TARGET, TRAIN_PATH
 
 
 def load_training_data(path: Path = TRAIN_PATH) -> pd.DataFrame:
-    return pd.read_csv(path)
-
-
-def load_test_data(path: Path = TEST_PATH) -> pd.DataFrame:
     return pd.read_csv(path)
 
 

@@ -12,25 +12,30 @@ class HouseFeatureEngineer(BaseEstimator, TransformerMixin):
     def transform(self, x: pd.DataFrame) -> pd.DataFrame:
         df = x.copy()
 
+        def numeric(column: str, default: float = 0.0) -> pd.Series:
+            if column in df:
+                return pd.to_numeric(df[column], errors="coerce").fillna(default)
+            return pd.Series(default, index=df.index)
+
         df["TotalSF"] = (
-            df.get("TotalBsmtSF", 0).fillna(0)
-            + df.get("1stFlrSF", 0).fillna(0)
-            + df.get("2ndFlrSF", 0).fillna(0)
+            numeric("TotalBsmtSF")
+            + numeric("1stFlrSF")
+            + numeric("2ndFlrSF")
         )
         df["TotalBathrooms"] = (
-            df.get("FullBath", 0).fillna(0)
-            + 0.5 * df.get("HalfBath", 0).fillna(0)
-            + df.get("BsmtFullBath", 0).fillna(0)
-            + 0.5 * df.get("BsmtHalfBath", 0).fillna(0)
+            numeric("FullBath")
+            + 0.5 * numeric("HalfBath")
+            + numeric("BsmtFullBath")
+            + 0.5 * numeric("BsmtHalfBath")
         )
-        df["HouseAgeAtSale"] = df.get("YrSold", 0).fillna(0) - df.get("YearBuilt", 0).fillna(0)
-        df["YearsSinceRemodel"] = df.get("YrSold", 0).fillna(0) - df.get("YearRemodAdd", 0).fillna(0)
-        df["HasGarage"] = (df.get("GarageArea", 0).fillna(0) > 0).astype(int)
-        df["HasBasement"] = (df.get("TotalBsmtSF", 0).fillna(0) > 0).astype(int)
-        df["HasFireplace"] = (df.get("Fireplaces", 0).fillna(0) > 0).astype(int)
-        df["HasPool"] = (df.get("PoolArea", 0).fillna(0) > 0).astype(int)
-        df["OverallScore"] = df.get("OverallQual", 0).fillna(0) * df.get("OverallCond", 0).fillna(0)
-        df["LogLotArea"] = np.log1p(df.get("LotArea", 0).fillna(0))
+        df["HouseAgeAtSale"] = numeric("YrSold") - numeric("YearBuilt")
+        df["YearsSinceRemodel"] = numeric("YrSold") - numeric("YearRemodAdd")
+        df["HasGarage"] = (numeric("GarageArea") > 0).astype(int)
+        df["HasBasement"] = (numeric("TotalBsmtSF") > 0).astype(int)
+        df["HasFireplace"] = (numeric("Fireplaces") > 0).astype(int)
+        df["HasPool"] = (numeric("PoolArea") > 0).astype(int)
+        df["OverallScore"] = numeric("OverallQual") * numeric("OverallCond")
+        df["LogLotArea"] = np.log1p(numeric("LotArea"))
 
         age_columns = ["HouseAgeAtSale", "YearsSinceRemodel"]
         for column in age_columns:

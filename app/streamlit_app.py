@@ -60,7 +60,7 @@ train_df = load_training_preview()
 model = load_model()
 
 st.title("House Price Intelligence")
-st.caption("Client-ready valuation workspace powered by an end-to-end scikit-learn pipeline.")
+st.caption("Client-ready valuation, market analysis, and buying recommendation workspace.")
 
 metric_cols = st.columns(4)
 metric_cols[0].metric("Validation RMSLE", f"{metrics.get('rmsle', 0):.4f}")
@@ -68,7 +68,9 @@ metric_cols[1].metric("Validation MAE", money(metrics.get("mae", 0)))
 metric_cols[2].metric("Validation R2", f"{metrics.get('r2', 0):.3f}")
 metric_cols[3].metric("Training Records", f"{len(train_df):,}")
 
-tab_predict, tab_batch, tab_insights = st.tabs(["Single Property", "Batch Scoring", "Market Insights"])
+tab_predict, tab_batch, tab_insights, tab_recommend = st.tabs(
+    ["Single Property", "Batch Scoring", "Market Insights", "Buying Guide"]
+)
 
 with tab_predict:
     left, right = st.columns([0.38, 0.62])
@@ -160,3 +162,66 @@ with tab_insights:
         use_container_width=True,
         hide_index=True,
     )
+
+with tab_recommend:
+    st.subheader("Customer Buying Suggestions")
+    budget = st.slider(
+        "Maximum budget",
+        int(train_df[TARGET].quantile(0.10)),
+        int(train_df[TARGET].quantile(0.95)),
+        int(train_df[TARGET].median()),
+        5000,
+    )
+    minimum_area = st.slider(
+        "Minimum living area",
+        int(train_df["GrLivArea"].quantile(0.10)),
+        int(train_df["GrLivArea"].quantile(0.95)),
+        int(train_df["GrLivArea"].median()),
+        50,
+    )
+    minimum_quality = st.slider("Minimum overall quality", 1, 10, 5)
+
+    shortlisted = train_df[
+        (train_df[TARGET] <= budget)
+        & (train_df["GrLivArea"] >= minimum_area)
+        & (train_df["OverallQual"] >= minimum_quality)
+    ].copy()
+
+    if shortlisted.empty:
+        st.warning("No homes match those filters. Increase the budget or relax area and quality requirements.")
+    else:
+        area_summary = (
+            shortlisted.groupby("Neighborhood")
+            .agg(
+                matching_homes=(TARGET, "size"),
+                median_price=(TARGET, "median"),
+                median_living_area=("GrLivArea", "median"),
+                median_quality=("OverallQual", "median"),
+                median_garage=("GarageCars", "median"),
+            )
+            .sort_values(["matching_homes", "median_quality", "median_living_area"], ascending=False)
+            .head(12)
+        )
+        area_summary["price_per_sqft"] = area_summary["median_price"] / area_summary["median_living_area"]
+        st.dataframe(
+            area_summary.reset_index().rename(
+                columns={
+                    "Neighborhood": "Neighborhood",
+                    "matching_homes": "Matching Homes",
+                    "median_price": "Median Price",
+                    "median_living_area": "Median Living Area",
+                    "median_quality": "Median Quality",
+                    "median_garage": "Median Garage Cars",
+                    "price_per_sqft": "Price Per Sq Ft",
+                }
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        best = area_summary.iloc[0]
+        st.markdown(
+            f"Recommended starting area: **{area_summary.index[0]}**. "
+            f"It has {int(best['matching_homes'])} matching homes, a median price of {money(best['median_price'])}, "
+            f"and median living area of {best['median_living_area']:,.0f} sq ft under the selected requirements."
+        )
